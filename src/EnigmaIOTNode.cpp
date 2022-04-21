@@ -488,6 +488,8 @@ bool EnigmaIOTNodeClass::configWiFiManager (rtcmem_data_t* data) {
 	//char networkName[NETWORK_NAME_LENGTH] = "";
 	char nodeName[NODE_NAME_LENGTH] = "";
 
+	DEBUG_DBG ("Set persistent to true");
+	WiFi.persistent(true);
 	wifiManager = new AsyncWiFiManager (&server, &dns);
 #if DEBUG_LEVEL == NONE
     wifiManager->setDebugOutput (false);

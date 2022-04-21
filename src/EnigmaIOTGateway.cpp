@@ -483,8 +483,10 @@ bool EnigmaIOTGatewayClass::sendDownstream (uint8_t* mac, const uint8_t* data, s
 }
 
 bool EnigmaIOTGatewayClass::configWiFiManager () {
+	DEBUG_INFO ("ConfigWifiManager Started");
 	server = new AsyncWebServer (80);
 	dns = new DNSServer ();
+	WiFi.persistent(true);
 	wifiManager = new AsyncWiFiManager (server, dns);
 
 	char networkKey[33] = "";
@@ -550,11 +552,13 @@ bool EnigmaIOTGatewayClass::configWiFiManager () {
 			std::regex netKeyRegex ("^.{8,32}$");
 			regexResult = std::regex_match (netKeyParam.getValue (), netKeyRegex);
 #endif
+			DEBUG_INFO ("Network key password field empty. Keeping the old one");
 			if (regexResult) {
 				uint8_t keySize = netKeyParam.getValueLength ();
 				if (keySize > KEY_LENGTH)
 					keySize = KEY_LENGTH;
 				const char* netKey = netKeyParam.getValue ();
+				DEBUG_INFO ("Netkey: %s", netKey);
 				if (netKey && (netKey[0] != '\0')) {// If password is empty, keep the old one
 					memset (this->gwConfig.networkKey, 0, KEY_LENGTH);
 					memcpy (this->gwConfig.networkKey, netKey, keySize);
@@ -681,7 +685,10 @@ bool EnigmaIOTGatewayClass::loadFlashData () {
 }
 
 bool EnigmaIOTGatewayClass::saveFlashData () {
-    File configFile = FILESYSTEM.open (CONFIG_FILE, "w");
+	DEBUG_DBG ("saveFlashData Started");
+
+  File configFile = FILESYSTEM.open (CONFIG_FILE, "w");
+	DEBUG_DBG ("saveFlashData Trying to open configFile %s", CONFIG_FILE);
 	if (!configFile) {
 		DEBUG_WARN ("failed to open config file %s for writing", CONFIG_FILE);
 		return false;
@@ -767,11 +774,15 @@ void EnigmaIOTGatewayClass::begin (Comms_halClass* comm, uint8_t* networkKey, bo
 		} else {
 			DEBUG_INFO ("Configuration loaded from flash");
 		}
-
+		DEBUG_DBG ("Going to initWifi");
 		initWiFi (gwConfig.channel, gwConfig.networkName, plainNetKey, COMM_GATEWAY);
+		DEBUG_DBG ("Finished initWifi");
 		comm->begin (NULL, gwConfig.channel, COMM_GATEWAY);
+		DEBUG_DBG ("comm->begin");
 		comm->onDataRcvd (rx_cb);
+		DEBUG_DBG ("comm->onDataRcvd (rx_cb);");
 		comm->onDataSent (tx_cb);
+		DEBUG_DBG ("comm->onDataSent (tx_cb);");
 
 #if ENABLE_REST_API
         DEBUG_INFO ("GW API started");
