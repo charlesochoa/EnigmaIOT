@@ -234,14 +234,22 @@ void processRxData (uint8_t* mac, uint8_t* buffer, uint8_t length, uint16_t lost
 		pld_size = serializeJson (root, payload, PAYLOAD_SIZE);
 	} else if (payload_type == MSG_PACK) {
 		DEBUG_INFO ("MsgPack message received!");
+    Serial.println ("-------FLAG-------");
 		const int capacity = JSON_ARRAY_SIZE (25) + 25 * JSON_OBJECT_SIZE (4);
+    Serial.println ("-------FLAG-------");
 		DynamicJsonDocument jsonBuffer (capacity);
+    Serial.println ("-------FLAG-------");
 		DeserializationError error = deserializeMsgPack (jsonBuffer, buffer, length);
+   Serial.println ("-------FLAG-------");
 		if (error != DeserializationError::Ok) {
 			DEBUG_ERROR ("Error decoding MSG Pack data: %s", error.c_str ());
 			return;
 		}
+   Serial.println ("-------FLAG-------");
 		pld_size = serializeJson (jsonBuffer, payload, PAYLOAD_SIZE);
+   Serial.println (PAYLOAD_SIZE);
+   Serial.println (payload);
+   Serial.println ("-------FLAG-------");
 	} else if (payload_type == RAW) {
 		DEBUG_INFO ("RAW message");
 		if (length <= PAYLOAD_SIZE) {
@@ -252,9 +260,10 @@ void processRxData (uint8_t* mac, uint8_t* buffer, uint8_t length, uint16_t lost
 			pld_size = PAYLOAD_SIZE;
 		}
 	}
-
+Serial.println ("-------OUTPUT-------");
 	GwOutput.outputDataSend (nodeName ? nodeName : mac_str, payload, pld_size);
 	DEBUG_INFO ("Published data message from %s, length %d: %s, Encoding 0x%02X", nodeName ? nodeName : mac_str, pld_size, payload, payload_type);
+  Serial.println ("-------LOST MESSAGES-------");
 	if (lostMessages > 0) {
 		pld_size = snprintf (payload, PAYLOAD_SIZE, "{\"lostMessages\":%u}", lostMessages);
 		GwOutput.outputDataSend (nodeName ? nodeName : mac_str, payload, pld_size, GwOutput_data_type::lostmessages);
@@ -267,7 +276,7 @@ void processRxData (uint8_t* mac, uint8_t* buffer, uint8_t length, uint16_t lost
 						 EnigmaIOTGateway.getTotalPackets ((uint8_t*)mac),
 						 EnigmaIOTGateway.getPacketsHour ((uint8_t*)mac));
 	GwOutput.outputDataSend (nodeName ? nodeName : mac_str, payload, pld_size, GwOutput_data_type::status);
-	DEBUG_INFO ("Published MQTT from %s: %s", nodeName ? nodeName : mac_str, payload);
+	DEBUG_INFO ("ENABLE_STATUS_MESSAGES Published MQTT from %s: %s", nodeName ? nodeName : mac_str, payload);
 #endif
 }
 

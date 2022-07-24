@@ -39,7 +39,7 @@
 #include <ArduinoJson.h>
 #include <ESPAsyncWiFiManager.h>
 
-//#define MEAS_TEMP // Temperature measurement for Gateway monitoring using DS18B20
+// #define MEAS_TEMP // Temperature measurement for Gateway monitoring using DS18B20
 
 #ifdef MEAS_TEMP
 #include <DallasTemperature.h>
@@ -233,7 +233,7 @@ void processRxData (uint8_t* mac, uint8_t* buffer, uint8_t length, uint16_t lost
 		}
 		pld_size = serializeJson (root, payload, PAYLOAD_SIZE);
 	} else if (payload_type == MSG_PACK) {
-		DEBUG_INFO ("MsgPack message");
+		DEBUG_INFO ("MsgPack message received!");
 		const int capacity = JSON_ARRAY_SIZE (25) + 25 * JSON_OBJECT_SIZE (4);
 		DynamicJsonDocument jsonBuffer (capacity);
 		DeserializationError error = deserializeMsgPack (jsonBuffer, buffer, length);
@@ -373,7 +373,7 @@ void nodeDisconnected (uint8_t* mac, gwInvalidateReason_t reason) {
 //#endif // ESP32
 
 void setup () {
-	Serial.begin (115200); Serial.println (); Serial.println ();
+	Serial.begin (9600); Serial.println (); Serial.println ();
 
 #ifdef ESP32
 // Turn-off the 'brownout detector' to avoid random restarts during wake up,
