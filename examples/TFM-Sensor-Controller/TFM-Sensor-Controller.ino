@@ -105,7 +105,7 @@ void wifiManagerStarted () {
 void setup () {
 
 #ifdef USE_SERIAL
-	Serial.begin (115200);
+	Serial.begin (9600);
 	delay (1000);
 	Serial.println ();
 #endif
