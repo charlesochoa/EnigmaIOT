@@ -460,6 +460,7 @@ bool EnigmaIOTGatewayClass::sendDownstream (uint8_t* mac, const uint8_t* data, s
 	default:
 		return false;
 	}
+	
 
 
 	DEBUG_INFO ("Send downstream");
@@ -507,11 +508,14 @@ bool EnigmaIOTGatewayClass::configWiFiManager () {
 	wifiManager->addParameter (new AsyncWiFiManagerParameter ("<br>"));
 
 	if (notifyWiFiManagerStarted) {
+		DEBUG_INFO ("notifyWiFiManagerStarted");
+
 		notifyWiFiManagerStarted ();
 	}
 
 	wifiManager->setDebugOutput (true);
 #if CONNECT_TO_WIFI_AP != 1
+	DEBUG_INFO ("wifiManager->setBreakAfterConfig (true);");
 	wifiManager->setBreakAfterConfig (true);
 #endif // CONNECT_TO_WIFI_AP
 	wifiManager->setTryConnectDuringConfigPortal (false);
@@ -519,7 +523,10 @@ bool EnigmaIOTGatewayClass::configWiFiManager () {
 	wifiManager->setConfigPortalTimeout (150);
 
 #if CONNECT_TO_WIFI_AP == 1
+		DEBUG_INFO ("wifiManager->autoConnect");
 	boolean result = wifiManager->autoConnect ("EnigmaIoTGateway", NULL, 3, 2000);
+			DEBUG_INFO (result);
+
 #else
 	boolean result = wifiManager->startConfigPortal ("EnigmaIoTGateway", NULL);
 	result = true; // Force true if this should not connect to a WiFi
@@ -578,6 +585,7 @@ bool EnigmaIOTGatewayClass::configWiFiManager () {
 			regexResult = std::regex_match (channelParam.getValue (), channelRegex);
 #endif
 			if (regexResult) {
+				
 				this->gwConfig.channel = atoi (channelParam.getValue ());
 				DEBUG_DBG ("WiFi ESP-NOW channel: %d", this->gwConfig.channel);
 			} else {
