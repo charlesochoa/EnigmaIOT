@@ -1,7 +1,7 @@
 /**
   * @file GwOutput_mqtt.h
-  * @version 0.9.7
-  * @date 04/02/2021
+  * @version 0.9.8
+  * @date 15/07/2021
   * @author German Martin
   * @brief MQTT Gateway output module
   *
@@ -71,7 +71,7 @@ typedef struct {
 	char mqtt_pass[41]; /**< MQTT broker user password*/
 } mqttgw_config_t;
 
-constexpr auto MAX_MQTT_TOPIC_LEN = 50;
+constexpr auto MAX_MQTT_TOPIC_LEN = 100;
 constexpr auto MAX_MQTT_PLD_LEN = 2048;
 
 typedef struct {
@@ -230,8 +230,20 @@ public:
 	  * @param type Type of message
 	  * @return Returns `true` if sending was successful. `false` otherwise
 	  */
-	bool outputDataSend (char* address, char* data, size_t length, GwOutput_data_type_t type = data);
+    bool outputDataSend (char* address, char* data, size_t length, GwOutput_data_type_t type = data);
 
+#if SUPPORT_HA_DISCOVERY
+    /**
+      * @brief Send MQTT generic message
+      * @param topic MQTT topic
+      * @param payload Message data buffer
+      * @param len Data buffer length
+      * @param retain MQTT retain parameter
+      * @return Returns `true` if sending was successful. `false` otherwise
+      */
+    bool rawMsgSend (const char* topic, char* payload, size_t len, bool retain);
+#endif
+    
 	 /**
 	  * @brief Should be called regularly for module management
 	  */
@@ -241,3 +253,4 @@ public:
 extern GwOutput_MQTT GwOutput;
 
 #endif // _GWOUTPUT_MQTT_h
+

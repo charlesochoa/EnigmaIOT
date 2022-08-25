@@ -1,7 +1,7 @@
 /**
   * @file EnigmaIOTGatewayMQTT.ino
-  * @version 0.9.7
-  * @date 04/02/2021
+  * @version 0.9.8
+  * @date 15/07/2021
   * @author German Martin
   * @brief MQTT Gateway based on EnigmaIoT over ESP-NOW
   *
@@ -39,7 +39,7 @@
 #include <ArduinoJson.h>
 #include <ESPAsyncWiFiManager.h>
 
-// #define MEAS_TEMP // Temperature measurement for Gateway monitoring using DS18B20
+//#define MEAS_TEMP // Temperature measurement for Gateway monitoring using DS18B20
 
 #ifdef MEAS_TEMP
 #include <DallasTemperature.h>
@@ -203,6 +203,13 @@ void doRestart () {
 
 }
 
+#if SUPPORT_HA_DISCOVERY
+void processHADiscovery (const char* topic, char* message, size_t len) {
+    DEBUG_INFO ("About to process HA discovery. Len: %d - %s --> %.*s", len, topic, len, message);
+    GwOutput.rawMsgSend (topic, message, len, true);
+}
+#endif
+
 void processRxData (uint8_t* mac, uint8_t* buffer, uint8_t length, uint16_t lostMessages, bool control, gatewayPayloadEncoding_t payload_type, char* nodeName = NULL) {
 	uint8_t* addr = mac;
 	size_t pld_size = 0;
@@ -233,23 +240,15 @@ void processRxData (uint8_t* mac, uint8_t* buffer, uint8_t length, uint16_t lost
 		}
 		pld_size = serializeJson (root, payload, PAYLOAD_SIZE);
 	} else if (payload_type == MSG_PACK) {
-		DEBUG_INFO ("MsgPack message received!");
-    Serial.println ("-------FLAG-------");
+		DEBUG_INFO ("MsgPack message");
 		const int capacity = JSON_ARRAY_SIZE (25) + 25 * JSON_OBJECT_SIZE (4);
-    Serial.println ("-------FLAG-------");
 		DynamicJsonDocument jsonBuffer (capacity);
-    Serial.println ("-------FLAG-------");
 		DeserializationError error = deserializeMsgPack (jsonBuffer, buffer, length);
-   Serial.println ("-------FLAG-------");
 		if (error != DeserializationError::Ok) {
 			DEBUG_ERROR ("Error decoding MSG Pack data: %s", error.c_str ());
 			return;
 		}
-   Serial.println ("-------FLAG-------");
 		pld_size = serializeJson (jsonBuffer, payload, PAYLOAD_SIZE);
-   Serial.println (PAYLOAD_SIZE);
-   Serial.println (payload);
-   Serial.println ("-------FLAG-------");
 	} else if (payload_type == RAW) {
 		DEBUG_INFO ("RAW message");
 		if (length <= PAYLOAD_SIZE) {
@@ -260,23 +259,23 @@ void processRxData (uint8_t* mac, uint8_t* buffer, uint8_t length, uint16_t lost
 			pld_size = PAYLOAD_SIZE;
 		}
 	}
-Serial.println ("-------OUTPUT-------");
+
 	GwOutput.outputDataSend (nodeName ? nodeName : mac_str, payload, pld_size);
 	DEBUG_INFO ("Published data message from %s, length %d: %s, Encoding 0x%02X", nodeName ? nodeName : mac_str, pld_size, payload, payload_type);
-  Serial.println ("-------LOST MESSAGES-------");
 	if (lostMessages > 0) {
 		pld_size = snprintf (payload, PAYLOAD_SIZE, "{\"lostMessages\":%u}", lostMessages);
 		GwOutput.outputDataSend (nodeName ? nodeName : mac_str, payload, pld_size, GwOutput_data_type::lostmessages);
 		DEBUG_INFO ("Published MQTT from %s: %s", nodeName ? nodeName : mac_str, payload);
 	}
 #if ENABLE_STATUS_MESSAGES
-	pld_size = snprintf (payload, PAYLOAD_SIZE, "{\"per\":%e,\"lostmessages\":%u,\"totalmessages\":%u,\"packetshour\":%.2f}",
-						 EnigmaIOTGateway.getPER ((uint8_t*)mac),
+    pld_size = snprintf (payload, PAYLOAD_SIZE, "{\"rssi\":%d,\"per\":%e,\"lostmessages\":%u,\"totalmessages\":%u,\"packetshour\":%.2f}",
+                         EnigmaIOTGateway.getNodes()->getNodeFromMAC((uint8_t*)mac)->getRSSI(),
+                         EnigmaIOTGateway.getPER ((uint8_t*)mac),
 						 EnigmaIOTGateway.getErrorPackets ((uint8_t*)mac),
 						 EnigmaIOTGateway.getTotalPackets ((uint8_t*)mac),
 						 EnigmaIOTGateway.getPacketsHour ((uint8_t*)mac));
 	GwOutput.outputDataSend (nodeName ? nodeName : mac_str, payload, pld_size, GwOutput_data_type::status);
-	DEBUG_INFO ("ENABLE_STATUS_MESSAGES Published MQTT from %s: %s", nodeName ? nodeName : mac_str, payload);
+	DEBUG_INFO ("Published MQTT from %s: %s", nodeName ? nodeName : mac_str, payload);
 #endif
 }
 
@@ -396,14 +395,15 @@ void setup () {
 
 #endif
 	pinMode (LED_BUILTIN, OUTPUT);
-	digitalWrite (LED_BUILTIN, LED_OFF);
-	startConnectionFlash (100);
+	digitalWrite (LED_BUILTIN, LED_ON);
 
 #ifdef MEAS_TEMP
-	ds18b20.begin ();
-	if (ds18b20.getDeviceCount () > 0) {
-		ds18b20.getAddress (dsAddress, 0);
-		DEBUG_INFO ("DS18B20 address: %02X %02X %02X %02X %02X %02X %02X %02X",
+    ds18b20.begin ();
+    
+    DEBUG_WARN ("Found %u sensors", ds18b20.getDeviceCount ());
+    
+    if (ds18b20.getAddress (dsAddress, 0)) {
+		DEBUG_WARN ("DS18B20 address: %02X %02X %02X %02X %02X %02X %02X %02X",
 					dsAddress[0], dsAddress[1], dsAddress[2], dsAddress[3],
 					dsAddress[4], dsAddress[5], dsAddress[6], dsAddress[7]);
 	} else {
@@ -413,7 +413,9 @@ void setup () {
 	ds18b20.setResolution (DS18B20_PREC);
 #endif // MEAS_TEMP
 
-	if (!GwOutput.loadConfig ()) {
+    startConnectionFlash (100);
+    
+    if (!GwOutput.loadConfig ()) {
 		DEBUG_WARN ("Error reading config file");
 	}
 
@@ -423,7 +425,10 @@ void setup () {
 	EnigmaIOTGateway.onNodeDisconnected (nodeDisconnected);
 	EnigmaIOTGateway.onWiFiManagerStarted (wifiManagerStarted);
 	EnigmaIOTGateway.onWiFiManagerExit (wifiManagerExit);
-	EnigmaIOTGateway.onDataRx (processRxData);
+    EnigmaIOTGateway.onDataRx (processRxData);
+#if SUPPORT_HA_DISCOVERY
+    EnigmaIOTGateway.onHADiscovery (processHADiscovery);
+#endif
 	EnigmaIOTGateway.onGatewayRestartRequested (doRestart);
 
 	EnigmaIOTGateway.begin (&Espnow_hal);
@@ -465,9 +470,11 @@ void sendStatus (float temperature) {
 
 	DynamicJsonDocument doc (capacity);
 
-	JsonObject status = doc.createNestedObject ("status");
-	status["temp"] = temperature;
-	status["nodes"] = EnigmaIOTGateway.getActiveNodesNumber ();
+    JsonObject status = doc.createNestedObject ("status");
+    if (temperature > -100) {
+        status["temp"] = temperature;
+    }
+    status["nodes"] = EnigmaIOTGateway.getActiveNodesNumber ();
 	status["mem"] = ESP.getFreeHeap ();
 
 	len = measureJson (doc) + 1;
@@ -490,10 +497,13 @@ void loop () {
 
 	if (ds18b20.validAddress (dsAddress)) {
         if ((millis () - lastTempTime > statusPeriod && !tempRequested) || !lastTempTime) {
-			ds18b20.requestTemperatures ();
-			DEBUG_WARN ("Temperature requested");
-			lastTempTime = millis ();
-			tempRequested = true;
+            if (ds18b20.requestTemperaturesByIndex (0)) {
+                DEBUG_INFO ("Temperature requested");
+                lastTempTime = millis ();
+                tempRequested = true;
+            } else {
+                DEBUG_WARN ("Temperature request error");
+            }
 		}
 		if (tempRequested) {
 			if (ds18b20.isConversionComplete ()) {

@@ -2,7 +2,7 @@
 #ifndef DSTROOTCA_H
 #define DSTROOTCA_H
 
-#if defined ESP32 && !defined NOSSL
+#if defined ESP32 && defined SSL
 #define SECURE_MQTT
 
 

@@ -565,7 +565,6 @@ bool EnigmaIOTGatewayClass::configWiFiManager () {
 #if CONNECT_TO_WIFI_AP == 1
 		DEBUG_INFO ("wifiManager->autoConnect");
 	boolean result = wifiManager->autoConnect ("EnigmaIoTGateway", NULL, 3, 2000);
-			DEBUG_INFO (result);
 
 #else
 	boolean result = wifiManager->startConfigPortal ("EnigmaIoTGateway", NULL);
